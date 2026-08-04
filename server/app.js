@@ -1,25 +1,40 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const requestLogger = require('./middleware/requestLogger');
-const errorHandler = require('./middleware/errorHandler');
-const healthRoutes = require('./routes/health');
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
 
 dotenv.config();
 
 const app = express();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(requestLogger);
 
-app.get('/', (req, res) => {
-  res.status(200).json({ message: 'Finance Advisor API is running' });
+// Routes
+app.get("/", (req, res) => {
+  res.json({
+    message: "Finance Advisor API is running",
+  });
 });
 
-app.use('/api/health', healthRoutes);
+// Temporary test route (optional)
+app.post("/api/test", (req, res) => {
+  res.json({
+    success: true,
+    message: "POST route is working",
+  });
+});
 
-app.use(errorHandler);
+// Auth routes
+const authRoutes = require("./routes/authRoutes");
+app.use("/api/auth", authRoutes);
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
 
 module.exports = app;
