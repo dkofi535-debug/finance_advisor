@@ -2,39 +2,66 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 
+const authRoutes = require("./routes/authRoutes");
+const transactionsRoutes = require("./routes/transactionsRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
+const budgetRoutes = require("./routes/budgetRoutes");
+const authMiddleware = require("./middleware/authMiddleware");
+const errorHandler = require("./middleware/errorHandler");
+
+
 dotenv.config();
 
 const app = express();
 
+// =========================
 // Middleware
+// =========================
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// =========================
+// Root Route
+// =========================
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     message: "Finance Advisor API is running",
   });
 });
 
-// Temporary test route (optional)
-app.post("/api/test", (req, res) => {
-  res.json({
-    success: true,
-    message: "POST route is working",
-  });
-});
-
-// Auth routes
-const authRoutes = require("./routes/authRoutes");
+// =========================
+// Authentication Routes
+// =========================
 app.use("/api/auth", authRoutes);
 
-// 404 handler
+// =========================
+// Transaction Routes (Protected)
+// =========================
+app.use("/api/transactions", authMiddleware, transactionsRoutes);
+
+// =========================
+// Dashboard Route (Protected)
+// =========================
+app.use("/api/dashboard", authMiddleware, dashboardRoutes);
+
+// =========================
+// Budget Routes (Protected)
+// =========================
+app.use("/api/budgets", authMiddleware, budgetRoutes);
+
+// =========================
+// 404 Route Handler
+// =========================
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: "Route not found",
   });
 });
+
+// =========================
+// Global Error Handler
+// =========================
+app.use(errorHandler);
 
 module.exports = app;
