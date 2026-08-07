@@ -1,21 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   getTransactions,
   createTransaction,
   updateTransaction,
   deleteTransaction,
-} from '../services/transactionService';
+} from '../services/transactionsService';
+
+const initialFormData = {
+  type: 'income',
+  category: '',
+  amount: '',
+  description: '',
+  transaction_date: '',
+};
 
 const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
-  const [formData, setFormData] = useState({
-    type: 'income',
-    category: '',
-    amount: '',
-    description: '',
-    transaction_date: '',
-  });
+  const [formData, setFormData] = useState(initialFormData);
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     loadTransactions();
@@ -23,10 +29,15 @@ const Transactions = () => {
 
   const loadTransactions = async () => {
     try {
+      setLoading(true);
+      setError('');
       const response = await getTransactions();
-      setTransactions(response.transactions || []);
-    } catch (error) {
-      console.error(error);
+      setTransactions(response?.transactions || []);
+    } catch (err) {
+      setError('Could not load transactions right now.');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,31 +46,53 @@ const Transactions = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (event) => {
-  event.preventDefault();
+  const resetForm = () => {
+    setFormData(initialFormData);
+    setEditingId(null);
+  };
 
-  try {
-    if (editingId) {
-      await updateTransaction(editingId, formData);
-    } else {
-      await createTransaction(formData);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!formData.category || !formData.amount || !formData.description || !formData.transaction_date) {
+      setError('Please fill in all fields before saving.');
+      return;
     }
 
-    await loadTransactions();
+    const amountValue = Number(formData.amount);
 
-    setFormData({
-      type: "income",
-      category: "",
-      amount: "",
-      description: "",
-      transaction_date: "",
-    });
+    if (Number.isNaN(amountValue) || amountValue <= 0) {
+      setError('Amount must be a positive number.');
+      return;
+    }
 
-    setEditingId(null);
-  } catch (error) {
-    console.error(error);
-  }
-};
+    try {
+      setSubmitting(true);
+      setError('');
+      setSuccessMessage('');
+
+      const payload = {
+        ...formData,
+        amount: amountValue,
+      };
+
+      if (editingId) {
+        await updateTransaction(editingId, payload);
+        setSuccessMessage('Transaction updated successfully.');
+      } else {
+        await createTransaction(payload);
+        setSuccessMessage('Transaction added successfully.');
+      }
+
+      await loadTransactions();
+      resetForm();
+    } catch (err) {
+      setError('Unable to save the transaction. Please try again.');
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleEdit = (transaction) => {
     setFormData({
@@ -70,25 +103,63 @@ const Transactions = () => {
       transaction_date: transaction.transaction_date,
     });
     setEditingId(transaction.id);
+    setError('');
+    setSuccessMessage('');
   };
 
- const handleDelete = async (id) => {
-  try {
-    await deleteTransaction(id);
-    await loadTransactions();
-  } catch (error) {
-    console.error(error);
-  }
-};
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm('Delete this transaction?');
+
+    if (!confirmed) return;
+
+    try {
+      setError('');
+      setSuccessMessage('');
+      await deleteTransaction(id);
+      await loadTransactions();
+      setSuccessMessage('Transaction deleted successfully.');
+      if (editingId === id) {
+        resetForm();
+      }
+    } catch (err) {
+      setError('Unable to delete the transaction.');
+      console.error(err);
+    }
+  };
+
   return (
     <div className="space-y-8 p-4 sm:p-6 lg:p-8">
       <div>
         <h1 className="text-3xl font-semibold text-gray-900">Transactions</h1>
-        <p className="mt-2 text-sm text-gray-600">Manage your income and expenses effortlessly.</p>
+        <p className="mt-2 text-sm text-gray-600">Manage your income and expenses in a simple, clear view.</p>
       </div>
 
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      {successMessage ? (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {successMessage}
+        </div>
+      ) : null}
+
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-xl font-semibold text-gray-900">Add Transaction</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">{editingId ? 'Edit Transaction' : 'Add Transaction'}</h2>
+          {editingId ? (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="text-sm font-medium text-gray-600 hover:text-gray-800"
+            >
+              Cancel edit
+            </button>
+          ) : null}
+        </div>
+
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Type</label>
@@ -124,11 +195,13 @@ const Transactions = () => {
               onChange={handleChange}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="0.00"
+              min="0"
+              step="0.01"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Date</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Transaction Date</label>
             <input
               type="date"
               name="transaction_date"
@@ -150,12 +223,13 @@ const Transactions = () => {
             />
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex flex-wrap gap-3">
             <button
               type="submit"
-              className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700"
+              disabled={submitting}
+              className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
             >
-              {editingId ? 'Update Transaction' : 'Save Transaction'}
+              {submitting ? 'Saving...' : editingId ? 'Update Transaction' : 'Save Transaction'}
             </button>
           </div>
         </form>
@@ -164,8 +238,10 @@ const Transactions = () => {
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-xl font-semibold text-gray-900">All Transactions</h2>
 
-        {transactions.length === 0 ? (
-          <p className="text-sm text-gray-500">No transactions found.</p>
+        {loading ? (
+          <p className="text-sm text-gray-500">Loading transactions...</p>
+        ) : transactions.length === 0 ? (
+          <p className="text-sm text-gray-500">No transactions found yet. Add your first one above.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -197,7 +273,7 @@ const Transactions = () => {
                         {isIncome ? '+' : '-'}GH₵ {Number(transaction.amount).toFixed(2)}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <button
                             onClick={() => handleEdit(transaction)}
                             className="rounded bg-yellow-500 px-3 py-1 text-sm font-medium text-white hover:bg-yellow-600"
