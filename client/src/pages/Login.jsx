@@ -15,6 +15,7 @@ function Login() {
 
     try {
       const response = await login(form);
+      console.log(response);
 
       localStorage.setItem("token", response.token);
 

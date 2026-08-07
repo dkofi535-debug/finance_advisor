@@ -15,4 +15,18 @@ const supabase = createClient(
     serviceRoleKey
 );
 
+(async () => {
+  console.log("=== Testing Supabase Connection ===");
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .limit(1);
+
+  console.log("DATA:", data);
+  console.log("ERROR:", error);
+
+  console.log("=== End Test ===");
+})();
+
 module.exports = supabase;
