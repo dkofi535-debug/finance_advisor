@@ -67,6 +67,7 @@ const getBudgetById = async (userId, budgetId) => {
 };
 
 const updateBudget = async (userId, budgetId, updates) => {
+  // First make sure the budget exists and belongs to this user
   await getBudgetById(userId, budgetId);
 
   const { data, error } = await supabase
@@ -74,8 +75,7 @@ const updateBudget = async (userId, budgetId, updates) => {
     .update(updates)
     .eq('id', budgetId)
     .eq('user_id', userId)
-    .select(budgetSelectFields)
-    .single();
+    .select(budgetSelectFields);
 
   if (error) {
     const dbError = new Error(`Failed to update budget: ${error.message}`);
@@ -83,7 +83,14 @@ const updateBudget = async (userId, budgetId, updates) => {
     throw dbError;
   }
 
-  return data;
+  // Make sure an updated row was actually returned
+  if (!data || data.length === 0) {
+    const notFoundError = new Error('Budget not found');
+    notFoundError.statusCode = 404;
+    throw notFoundError;
+  }
+
+  return data[0];
 };
 
 const deleteBudget = async (userId, budgetId) => {
