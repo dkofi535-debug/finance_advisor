@@ -1,194 +1,310 @@
-import React, { useEffect, useState } from 'react';
-import {
-  getMonthlyReport,
-  getCategoryReport,
-  getBudgetReport,
-  getSavingsReport,
-} from '../services/reportsService';
+import React, { useEffect, useMemo, useState } from 'react';
+import { getTransactions } from '../services/transactionsService';
 
 const Reports = () => {
-  const [monthly, setMonthly] = useState(null);
-  const [category, setCategory] = useState([]);
-  const [budget, setBudget] = useState([]);
-  const [savings, setSavings] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    loadReports();
+    loadTransactions();
   }, []);
 
-  const loadReports = async () => {
+  const loadTransactions = async () => {
     try {
-      const monthlyRes = await getMonthlyReport();
-      const categoryRes = await getCategoryReport();
-      const budgetRes = await getBudgetReport();
-      const savingsRes = await getSavingsReport();
+      setLoading(true);
+      setError('');
 
-      setMonthly(monthlyRes.data);
-      setCategory(categoryRes.data);
-      setBudget(budgetRes.data);
-      setSavings(savingsRes.data);
-    } catch (error) {
-      console.error(error);
+      const response = await getTransactions();
+
+      setTransactions(response?.transactions || []);
+    } catch (err) {
+      console.error('Reports error:', err);
+      setError('Failed to load report data.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const reportData = useMemo(() => {
+    const incomeTransactions = transactions.filter(
+      (transaction) => transaction.type === 'income'
+    );
+
+    const expenseTransactions = transactions.filter(
+      (transaction) => transaction.type === 'expense'
+    );
+
+    const totalIncome = incomeTransactions.reduce(
+      (total, transaction) => total + Number(transaction.amount || 0),
+      0
+    );
+
+    const totalExpenses = expenseTransactions.reduce(
+      (total, transaction) => total + Number(transaction.amount || 0),
+      0
+    );
+
+    const balance = totalIncome - totalExpenses;
+
+    const categoryTotals = {};
+
+    expenseTransactions.forEach((transaction) => {
+      const category = transaction.category || 'Other';
+
+      categoryTotals[category] =
+        (categoryTotals[category] || 0) +
+        Number(transaction.amount || 0);
+    });
+
+    return {
+      totalIncome,
+      totalExpenses,
+      balance,
+      transactionCount: transactions.length,
+      incomeCount: incomeTransactions.length,
+      expenseCount: expenseTransactions.length,
+      categoryTotals,
+    };
+  }, [transactions]);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+        Loading reports...
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 p-6">
+    <div className="space-y-8">
+      {/* HEADER */}
+      <div>
+        <h1 className="text-3xl font-semibold text-gray-900 dark:text-slate-100">
+          Reports
+        </h1>
 
-      <h1 className="text-3xl font-bold">
-        Financial Reports
-      </h1>
+        <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">
+          View a summary of your financial activity.
+        </p>
+      </div>
 
-      {monthly && (
-        <div className="grid md:grid-cols-4 gap-4">
-
-          <div className="bg-green-100 rounded-lg p-5">
-            <h3>Total Income</h3>
-            <p className="text-2xl font-bold">
-              GH₵ {monthly.total_income}
-            </p>
-          </div>
-
-          <div className="bg-red-100 rounded-lg p-5">
-            <h3>Total Expenses</h3>
-            <p className="text-2xl font-bold">
-              GH₵ {monthly.total_expenses}
-            </p>
-          </div>
-
-          <div className="bg-blue-100 rounded-lg p-5">
-            <h3>Balance</h3>
-            <p className="text-2xl font-bold">
-              GH₵ {monthly.net_balance}
-            </p>
-          </div>
-
-          <div className="bg-yellow-100 rounded-lg p-5">
-            <h3>Transactions</h3>
-            <p className="text-2xl font-bold">
-              {monthly.total_transactions}
-            </p>
-          </div>
-
+      {/* ERROR */}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          {error}
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow p-6">
+      {/* SUMMARY CARDS */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Total Income
+          </p>
 
-        <h2 className="text-xl font-semibold mb-4">
-          Expenses by Category
-        </h2>
-
-        <table className="w-full">
-
-          <thead>
-
-            <tr>
-
-              <th className="text-left">Category</th>
-
-              <th className="text-left">Total</th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {category.map((item) => (
-
-              <tr key={item.category}>
-
-                <td>{item.category}</td>
-
-                <td>GH₵ {item.total_expenses}</td>
-
-              </tr>
-
-            ))}
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-      <div className="bg-white rounded-xl shadow p-6">
-
-        <h2 className="text-xl font-semibold mb-4">
-          Budget Report
-        </h2>
-
-        <table className="w-full">
-
-          <thead>
-
-            <tr>
-
-              <th>Category</th>
-
-              <th>Budget</th>
-
-              <th>Spent</th>
-
-              <th>Remaining</th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {budget.map((item) => (
-
-              <tr key={item.category}>
-
-                <td>{item.category}</td>
-
-                <td>{item.monthly_limit}</td>
-
-                <td>{item.total_spent}</td>
-
-                <td>{item.remaining_budget}</td>
-
-              </tr>
-
-            ))}
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-      {savings && (
-
-        <div className="grid md:grid-cols-4 gap-4">
-
-          <div className="bg-indigo-100 rounded-lg p-5">
-            <h3>Target</h3>
-            <p>GH₵ {savings.total_target_amount}</p>
-          </div>
-
-          <div className="bg-green-100 rounded-lg p-5">
-            <h3>Saved</h3>
-            <p>GH₵ {savings.total_saved}</p>
-          </div>
-
-          <div className="bg-red-100 rounded-lg p-5">
-            <h3>Remaining</h3>
-            <p>GH₵ {savings.remaining_to_save}</p>
-          </div>
-
-          <div className="bg-gray-100 rounded-lg p-5">
-            <h3>Goals</h3>
-            <p>{savings.number_of_goals}</p>
-          </div>
-
+          <p className="mt-2 text-2xl font-bold text-green-600">
+            GH₵ {reportData.totalIncome.toFixed(2)}
+          </p>
         </div>
 
-      )}
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Total Expenses
+          </p>
 
+          <p className="mt-2 text-2xl font-bold text-red-600">
+            GH₵ {reportData.totalExpenses.toFixed(2)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Net Balance
+          </p>
+
+          <p
+            className={`mt-2 text-2xl font-bold ${
+              reportData.balance >= 0
+                ? 'text-blue-600'
+                : 'text-red-600'
+            }`}
+          >
+            GH₵ {reportData.balance.toFixed(2)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Transactions
+          </p>
+
+          <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-slate-100">
+            {reportData.transactionCount}
+          </p>
+        </div>
+      </div>
+
+      {/* SUMMARY */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* TRANSACTION SUMMARY */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
+            Transaction Summary
+          </h2>
+
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-slate-700">
+              <span className="text-gray-600 dark:text-slate-400">
+                Income Transactions
+              </span>
+
+              <span className="font-semibold text-green-600">
+                {reportData.incomeCount}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-slate-700">
+              <span className="text-gray-600 dark:text-slate-400">
+                Expense Transactions
+              </span>
+
+              <span className="font-semibold text-red-600">
+                {reportData.expenseCount}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600 dark:text-slate-400">
+                Total Transactions
+              </span>
+
+              <span className="font-semibold text-gray-900 dark:text-slate-100">
+                {reportData.transactionCount}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* EXPENSE CATEGORIES */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
+            Expense Categories
+          </h2>
+
+          {Object.keys(reportData.categoryTotals).length === 0 ? (
+            <p className="mt-6 text-sm text-gray-500 dark:text-slate-400">
+              No expense data available.
+            </p>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {Object.entries(reportData.categoryTotals).map(
+                ([category, amount]) => (
+                  <div
+                    key={category}
+                    className="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-slate-700"
+                  >
+                    <span className="text-gray-600 dark:text-slate-400">
+                      {category}
+                    </span>
+
+                    <span className="font-semibold text-red-600">
+                      GH₵ {amount.toFixed(2)}
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* RECENT TRANSACTIONS */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
+            Recent Transactions
+          </h2>
+
+          <span className="text-sm text-gray-500 dark:text-slate-400">
+            {transactions.length} total
+          </span>
+        </div>
+
+        {transactions.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            No transactions available.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-slate-700">
+              <thead className="bg-gray-50 dark:bg-slate-800">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-300">
+                    Date
+                  </th>
+
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-300">
+                    Type
+                  </th>
+
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-300">
+                    Category
+                  </th>
+
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-300">
+                    Amount
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                {transactions.slice(0, 10).map((transaction) => {
+                  const isIncome = transaction.type === 'income';
+
+                  return (
+                    <tr
+                      key={transaction.id}
+                      className="bg-white dark:bg-slate-900"
+                    >
+                      <td className="px-4 py-3 text-gray-700 dark:text-slate-300">
+                        {transaction.transaction_date}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            isIncome
+                              ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+                              : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
+                          }`}
+                        >
+                          {transaction.type}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-3 text-gray-700 dark:text-slate-300">
+                        {transaction.category}
+                      </td>
+
+                      <td
+                        className={`px-4 py-3 font-semibold ${
+                          isIncome
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {isIncome ? '+' : '-'} GH₵{' '}
+                        {Number(transaction.amount || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

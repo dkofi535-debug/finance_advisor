@@ -35,7 +35,7 @@ const Savings = () => {
 
       setGoals(response?.data || []);
     } catch (err) {
-      console.error(err);
+      console.error('Load savings error:', err);
       setError('Could not load savings goals right now.');
     } finally {
       setLoading(false);
@@ -71,6 +71,11 @@ const Savings = () => {
 
     if (!Number.isFinite(currentAmount) || currentAmount < 0) {
       setError('Current amount cannot be negative.');
+      return false;
+    }
+
+    if (currentAmount > targetAmount) {
+      setError('Current amount cannot be greater than the target amount.');
       return false;
     }
 
@@ -114,9 +119,11 @@ const Savings = () => {
       }
 
       await loadGoals();
-      resetForm();
+
+      setFormData(initialFormData);
+      setEditingId(null);
     } catch (err) {
-      console.error(err);
+      console.error('Save savings error:', err);
       setError('Unable to save the savings goal. Please try again.');
     } finally {
       setSaving(false);
@@ -157,10 +164,11 @@ const Savings = () => {
       setSuccessMessage('Savings goal deleted successfully.');
 
       if (editingId === id) {
-        resetForm();
+        setFormData(initialFormData);
+        setEditingId(null);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Delete savings error:', err);
       setError('Unable to delete the savings goal.');
     } finally {
       setSaving(false);
@@ -168,37 +176,35 @@ const Savings = () => {
   };
 
   return (
-    <div className="space-y-8 p-4 sm:p-6 lg:p-8">
-
+    <div className="space-y-8">
       {/* PAGE HEADER */}
       <div>
-        <h1 className="text-3xl font-semibold text-gray-900">
+        <h1 className="text-3xl font-semibold text-gray-900 dark:text-slate-100">
           Savings Goals
         </h1>
 
-        <p className="mt-2 text-sm text-gray-600">
+        <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">
           Create and manage your savings goals and track your progress.
         </p>
       </div>
 
       {/* MESSAGES */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           {error}
         </div>
       )}
 
       {successMessage && (
-        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-300">
           {successMessage}
         </div>
       )}
 
       {/* FORM */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
             {editingId ? 'Edit Savings Goal' : 'Create Savings Goal'}
           </h2>
 
@@ -206,7 +212,7 @@ const Savings = () => {
             <button
               type="button"
               onClick={resetForm}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-100"
             >
               Cancel edit
             </button>
@@ -217,10 +223,9 @@ const Savings = () => {
           onSubmit={handleSubmit}
           className="grid gap-4 md:grid-cols-2"
         >
-
           {/* GOAL NAME */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
               Goal Name
             </label>
 
@@ -230,13 +235,13 @@ const Savings = () => {
               value={formData.goal_name}
               onChange={handleChange}
               placeholder="e.g. New Laptop"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
             />
           </div>
 
-          {/* TARGET AMOUNT */}
+          {/* TARGET */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
               Target Amount
             </label>
 
@@ -248,13 +253,13 @@ const Savings = () => {
               placeholder="0.00"
               min="0"
               step="0.01"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
             />
           </div>
 
-          {/* CURRENT AMOUNT */}
+          {/* CURRENT */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
               Current Amount
             </label>
 
@@ -266,13 +271,13 @@ const Savings = () => {
               placeholder="0.00"
               min="0"
               step="0.01"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
             />
           </div>
 
           {/* TARGET DATE */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
               Target Date
             </label>
 
@@ -281,13 +286,12 @@ const Savings = () => {
               name="target_date"
               value={formData.target_date}
               onChange={handleChange}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
           </div>
 
           {/* BUTTONS */}
           <div className="flex flex-wrap gap-3 md:col-span-2">
-
             <button
               type="submit"
               disabled={saving}
@@ -296,82 +300,77 @@ const Savings = () => {
               {saving
                 ? 'Saving...'
                 : editingId
-                  ? 'Update Goal'
-                  : 'Create Goal'}
+                ? 'Update Goal'
+                : 'Create Goal'}
             </button>
 
             {editingId && (
               <button
                 type="button"
                 onClick={resetForm}
-                className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 Cancel
               </button>
             )}
-
           </div>
         </form>
       </div>
 
       {/* SAVINGS GOALS */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
             Your Savings Goals
           </h2>
 
           {loading && (
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-gray-500 dark:text-slate-400">
               Loading...
             </span>
           )}
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
             Loading savings goals...
           </p>
         ) : goals.length === 0 ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
             No savings goals found. Create your first goal above.
           </p>
         ) : (
           <div className="overflow-x-auto">
-
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-slate-700">
+              <thead className="bg-gray-50 dark:bg-slate-800">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-300">
                     Goal
                   </th>
 
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-300">
                     Target
                   </th>
 
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-300">
                     Saved
                   </th>
 
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-300">
                     Progress
                   </th>
 
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-300">
                     Target Date
                   </th>
 
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-300">
                     Actions
                   </th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-gray-100 bg-white">
-
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                 {goals.map((goal) => {
                   const target = Number(goal.target_amount || 0);
                   const saved = Number(goal.current_amount || 0);
@@ -384,29 +383,27 @@ const Savings = () => {
                   return (
                     <tr
                       key={goal.id}
-                      className="hover:bg-gray-50"
+                      className="bg-white hover:bg-gray-50 dark:bg-slate-900 dark:hover:bg-slate-800"
                     >
-
-                      <td className="px-4 py-4 font-medium text-gray-900">
+                      <td className="px-4 py-4 font-medium text-gray-900 dark:text-slate-100">
                         {goal.goal_name}
                       </td>
 
-                      <td className="px-4 py-4 text-gray-700">
+                      <td className="px-4 py-4 text-gray-700 dark:text-slate-300">
                         GH₵ {target.toFixed(2)}
                       </td>
 
-                      <td className="px-4 py-4 text-gray-700">
+                      <td className="px-4 py-4 text-gray-700 dark:text-slate-300">
                         GH₵ {saved.toFixed(2)}
                       </td>
 
-                      <td className="px-4 py-4 min-w-[180px]">
-
-                        <div className="mb-1 flex justify-between text-xs font-medium text-gray-600">
+                      <td className="min-w-[180px] px-4 py-4">
+                        <div className="mb-1 flex justify-between text-xs font-medium text-gray-600 dark:text-slate-400">
                           <span>Progress</span>
                           <span>{percentage.toFixed(0)}%</span>
                         </div>
 
-                        <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                        <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-700">
                           <div
                             className="h-full rounded-full bg-emerald-600"
                             style={{
@@ -414,17 +411,14 @@ const Savings = () => {
                             }}
                           />
                         </div>
-
                       </td>
 
-                      <td className="px-4 py-4 text-gray-700">
+                      <td className="px-4 py-4 text-gray-700 dark:text-slate-300">
                         {goal.target_date || '-'}
                       </td>
 
                       <td className="px-4 py-4">
-
                         <div className="flex flex-wrap gap-2">
-
                           <button
                             type="button"
                             onClick={() => handleEdit(goal)}
@@ -442,17 +436,12 @@ const Savings = () => {
                           >
                             Delete
                           </button>
-
                         </div>
-
                       </td>
-
                     </tr>
                   );
                 })}
-
               </tbody>
-
             </table>
           </div>
         )}
