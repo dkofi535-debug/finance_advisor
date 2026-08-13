@@ -4,6 +4,7 @@ import {
   createSavings,
   updateSavings,
   deleteSavings,
+  getSavingsRecommendation,
 } from '../services/savingsService';
 
 const initialFormData = {
@@ -21,6 +22,14 @@ const Savings = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [availableAmount, setAvailableAmount] = useState('');
+  const [recommendation, setRecommendation] = useState({
+    recommendations: [],
+    availableAmount: 0,
+    remainingBalance: 0,
+    explanation: '',
+  });
+  const [recommendationLoading, setRecommendationLoading] = useState(false);
 
   useEffect(() => {
     loadGoals();
@@ -175,6 +184,26 @@ const Savings = () => {
     }
   };
 
+  const handleRecommendation = async () => {
+    try {
+      setRecommendationLoading(true);
+      setError('');
+
+      const response = await getSavingsRecommendation(availableAmount || 0);
+      setRecommendation(response || {
+        recommendations: [],
+        availableAmount: 0,
+        remainingBalance: 0,
+        explanation: '',
+      });
+    } catch (err) {
+      console.error('Savings recommendation error:', err);
+      setError('Unable to generate savings recommendation.');
+    } finally {
+      setRecommendationLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* PAGE HEADER */}
@@ -315,6 +344,81 @@ const Savings = () => {
             )}
           </div>
         </form>
+      </div>
+
+      {/* GREEDY SAVINGS RECOMMENDATION */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
+              Savings Recommendation
+            </h2>
+            <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">
+              Greedy Algorithm: repeatedly selects the best immediate savings goal according to the defined priority rule.
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={availableAmount}
+            onChange={(event) => setAvailableAmount(event.target.value)}
+            placeholder="Available savings amount"
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+          />
+
+          <button
+            type="button"
+            onClick={handleRecommendation}
+            disabled={recommendationLoading}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+          >
+            {recommendationLoading ? 'Calculating...' : 'Generate Recommendation'}
+          </button>
+        </div>
+
+        {recommendation.explanation && (
+          <p className="mb-3 text-sm text-gray-600 dark:text-slate-400">
+            {recommendation.explanation}
+          </p>
+        )}
+
+        {recommendation.recommendations.length > 0 ? (
+          <div className="space-y-3">
+            <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              Available amount: GH₵ {Number(recommendation.availableAmount || 0).toFixed(2)}
+              <span className="ml-4">
+                Remaining balance: GH₵ {Number(recommendation.remainingBalance || 0).toFixed(2)}
+              </span>
+            </div>
+
+            {recommendation.recommendations.map((item) => (
+              <div
+                key={item.goalId}
+                className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-gray-900 dark:text-slate-100">
+                    {item.goalName}
+                  </span>
+                  <span className="text-xs text-gray-600 dark:text-slate-400">
+                    {item.priorityRule}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-gray-700 dark:text-slate-300">
+                  Allocate GH₵ {Number(item.allocatedAmount || 0).toFixed(2)} to cover the remaining shortfall.
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Add an available savings amount to see the greedy allocation suggestion.
+          </p>
+        )}
       </div>
 
       {/* SAVINGS GOALS */}

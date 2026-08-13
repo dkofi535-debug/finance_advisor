@@ -4,7 +4,8 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
-} from '../services/transactionsService';
+  searchTransactions,
+} from '../services/transactionService';
 
 const initialFormData = {
   type: 'income',
@@ -22,6 +23,16 @@ const Transactions = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [searchFilters, setSearchFilters] = useState({
+    category: '',
+    type: '',
+    amount: '',
+    date: '',
+    description: '',
+  });
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchMode, setSearchMode] = useState(false);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     loadTransactions();
@@ -55,6 +66,58 @@ const Transactions = () => {
   const resetForm = () => {
     setFormData(initialFormData);
     setEditingId(null);
+    setError('');
+  };
+
+  const handleSearchChange = (event) => {
+    const { name, value } = event.target;
+
+    setSearchFilters((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSearch = async (event) => {
+    event.preventDefault();
+
+    try {
+      setSearching(true);
+      setError('');
+
+      const cleanedFilters = Object.fromEntries(
+        Object.entries(searchFilters).filter(
+          ([, value]) => value !== '' && value !== null && value !== undefined
+        )
+      );
+
+      if (Object.keys(cleanedFilters).length === 0) {
+        setSearchMode(false);
+        setSearchResults([]);
+        return;
+      }
+
+      const response = await searchTransactions(cleanedFilters);
+      setSearchResults(response?.transactions || []);
+      setSearchMode(true);
+    } catch (err) {
+      console.error('Search transactions error:', err);
+      setError('Unable to search transactions right now.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchFilters({
+      category: '',
+      type: '',
+      amount: '',
+      date: '',
+      description: '',
+    });
+    setSearchResults([]);
+    setSearchMode(false);
     setError('');
   };
 
@@ -328,19 +391,103 @@ const Transactions = () => {
         </form>
       </div>
 
+      {/* SEARCH ALGORITHM */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
+              Transaction Search
+            </h2>
+            <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">
+              Search Algorithm: searches through transactions to find matching records.
+            </p>
+          </div>
+
+          {searchMode && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              Clear search
+            </button>
+          )}
+        </div>
+
+        <form onSubmit={handleSearch} className="grid gap-4 md:grid-cols-5">
+          <input
+            type="text"
+            name="category"
+            value={searchFilters.category}
+            onChange={handleSearchChange}
+            placeholder="Category"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+          />
+
+          <select
+            name="type"
+            value={searchFilters.type}
+            onChange={handleSearchChange}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          >
+            <option value="">Type</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+
+          <input
+            type="number"
+            name="amount"
+            value={searchFilters.amount}
+            onChange={handleSearchChange}
+            placeholder="Amount"
+            min="0"
+            step="0.01"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+          />
+
+          <input
+            type="date"
+            name="date"
+            value={searchFilters.date}
+            onChange={handleSearchChange}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+
+          <input
+            type="text"
+            name="description"
+            value={searchFilters.description}
+            onChange={handleSearchChange}
+            placeholder="Description"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+          />
+
+          <div className="md:col-span-5 flex justify-end">
+            <button
+              type="submit"
+              disabled={searching}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+            >
+              {searching ? 'Searching...' : 'Search Transactions'}
+            </button>
+          </div>
+        </form>
+      </div>
+
       {/* TRANSACTIONS TABLE */}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <h2 className="mb-4 text-xl font-semibold text-gray-900 dark:text-slate-100">
-          All Transactions
+          {searchMode ? 'Search Results' : 'All Transactions'}
         </h2>
 
         {loading ? (
           <p className="text-sm text-gray-500 dark:text-slate-400">
             Loading transactions...
           </p>
-        ) : transactions.length === 0 ? (
+        ) : (searchMode ? searchResults : transactions).length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            No transactions found yet. Add your first one above.
+            No transactions matched your search.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -374,7 +521,7 @@ const Transactions = () => {
               </thead>
 
               <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-                {transactions.map((transaction) => {
+                {(searchMode ? searchResults : transactions).map((transaction) => {
                   const isIncome = transaction.type === 'income';
 
                   return (

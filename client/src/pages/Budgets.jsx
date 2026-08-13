@@ -4,6 +4,7 @@ import {
   createBudget,
   updateBudget,
   deleteBudget,
+  getBudgetOptimization,
 } from '../services/budgetService';
 
 const initialFormData = {
@@ -20,9 +21,13 @@ const Budgets = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [optimization, setOptimization] = useState(null);
+  const [optimizationMonth, setOptimizationMonth] = useState(new Date().getMonth() + 1);
+  const [optimizationYear, setOptimizationYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     loadBudgets();
+    loadOptimization(new Date().getMonth() + 1, new Date().getFullYear());
   }, []);
 
   const loadBudgets = async () => {
@@ -159,6 +164,16 @@ const Budgets = () => {
     }
   };
 
+  const loadOptimization = async (month = optimizationMonth, year = optimizationYear) => {
+    try {
+      const response = await getBudgetOptimization(month, year);
+      setOptimization(response || null);
+    } catch (err) {
+      console.error('Budget optimization error:', err);
+      setError('Unable to generate budget optimization right now.');
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* PAGE HEADER */}
@@ -281,6 +296,75 @@ const Budgets = () => {
             )}
           </div>
         </form>
+      </div>
+
+      {/* BUDGET OPTIMIZATION */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
+              Budget Optimization
+            </h2>
+            <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">
+              Optimization Algorithm: evaluates the current budget and recommends an improved allocation.
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
+          <input
+            type="number"
+            min="1"
+            max="12"
+            value={optimizationMonth}
+            onChange={(event) => setOptimizationMonth(Number(event.target.value))}
+            className="w-28 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+          />
+
+          <input
+            type="number"
+            value={optimizationYear}
+            onChange={(event) => setOptimizationYear(Number(event.target.value))}
+            className="w-32 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+          />
+
+          <button
+            type="button"
+            onClick={() => loadOptimization(optimizationMonth, optimizationYear)}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          >
+            Optimize Budget
+          </button>
+        </div>
+
+        {optimization && (
+          <div className="space-y-3">
+            <div className="rounded-lg bg-indigo-50 p-3 text-sm text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+              Income: GH₵ {Number(optimization.totalIncome || 0).toFixed(2)}
+              <span className="ml-4">Expenses: GH₵ {Number(optimization.totalExpenses || 0).toFixed(2)}</span>
+              <span className="ml-4">Available: GH₵ {Number(optimization.disposableIncome || 0).toFixed(2)}</span>
+            </div>
+
+            {optimization.recommendations.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-gray-900 dark:text-slate-100">{item.category}</span>
+                  <span className="text-xs text-gray-600 dark:text-slate-400">
+                    {item.difference >= 0 ? 'Increase' : 'Reduce'}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-gray-700 dark:text-slate-300">
+                  Current: GH₵ {Number(item.current || 0).toFixed(2)}
+                  <span className="mx-2">→</span>
+                  Recommended: GH₵ {Number(item.recommended || 0).toFixed(2)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* BUDGET OVERVIEW */}

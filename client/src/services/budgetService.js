@@ -19,3 +19,11 @@ export const deleteBudget = async (id) => {
   const response = await api.delete(`/budgets/${id}`);
   return response.data;
 };
+
+export const getBudgetOptimization = async (month, year) => {
+  const response = await api.get('/budgets/optimization', {
+    params: { month, year },
+  });
+
+  return response.data;
+};

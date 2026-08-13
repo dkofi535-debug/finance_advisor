@@ -9,6 +9,7 @@ const budgetRoutes = require("./routes/budgetRoutes");
 const authMiddleware = require("./middleware/authMiddleware");
 const savingsRoutes = require('./routes/savingsRoutes');
 const reportsRoutes = require('./routes/reportsRoutes');
+const algorithmRoutes = require('./routes/algorithmRoutes');
 const errorHandler = require("./middleware/errorHandler");
 
 
@@ -58,6 +59,10 @@ app.use('/api/savings', authMiddleware, savingsRoutes);
 //=========================
 //Reports Routes(Protected)
 app.use('/api/reports', authMiddleware, reportsRoutes);
+
+//=========================
+//Algorithm Routes(Protected)
+app.use('/api', authMiddleware, algorithmRoutes);
 
 // =========================
 // 404 Route Handler

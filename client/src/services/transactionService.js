@@ -19,3 +19,11 @@ export const deleteTransaction = async (id) => {
   const response = await api.delete(`/transactions/${id}`);
   return response.data;
 };
+
+export const searchTransactions = async (filters = {}) => {
+  const response = await api.get('/transactions/search', {
+    params: filters,
+  });
+
+  return response.data;
+};

@@ -19,3 +19,11 @@ export const deleteSavings = async (id) => {
   const response = await api.delete(`/savings/${id}`);
   return response.data;
 };
+
+export const getSavingsRecommendation = async (availableAmount) => {
+  const response = await api.get('/savings/recommendation', {
+    params: { amount: availableAmount },
+  });
+
+  return response.data;
+};
